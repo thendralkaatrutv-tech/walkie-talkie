@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walkie-Talkie</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+            padding: 20px;
+        }
+        .login-screen {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .login-screen h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+        .login-screen .subtitle {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        .input-group input:focus {
+            border-color: #00d4ff;
+        }
+        .input-group input::placeholder {
+            color: #666;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+        }
+        .app-screen {
+            display: none;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .app-header {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .app-header h2 {
+            color: #00d4ff;
+            font-size: 1.3em;
+        }
+        .channel-badge {
+            background: rgba(0,212,255,0.2);
+            color: #00d4ff;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        .users-list {
+            padding: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .users-list h3 {
+            color: #888;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .user-item.talking {
+            background: rgba(0,212,255,0.15);
+            border: 1px solid rgba(0,212,255,0.3);
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        .user-item.talking .user-avatar {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .user-info { flex: 1; }
+        .user-name { font-weight: 600; }
+        .user-status { font-size: 0.8em; color: #888; }
+        .talking-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00d4ff;
+            display: none;
+        }
+        .user-item.talking .talking-indicator {
+            display: block;
+            animation: blink 0.5s infinite alternate;
+        }
+        @keyframes blink {
+            from { opacity: 1; }
+            to { opacity: 0.3; }
+        }
+        .ptt-area {
+            padding: 30px;
+            text-align: center;
+            background: rgba(0,0,0,0.2);
+        }
+        .ptt-button {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.1);
+            background: linear-gradient(145deg, #2a2a4a, #1a1a3e);
+            color: #fff;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            position: relative;
+            overflow: hidden;
+        }
+        .ptt-button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(0,212,255,0.3);
+            transform: translate(-50%, -50%);
+            transition: width 0.3s, height 0.3s;
+        }
+        .ptt-button:active, .ptt-button.active {
+            background: linear-gradient(145deg, #00d4ff, #0099cc);
+            transform: scale(0.95);
+            border-color: #00d4ff;
+            box-shadow: 0 0 50px rgba(0,212,255,0.5);
+        }
+        .ptt-button:active::before, .ptt-button.active::before {
+            width: 200px;
+            height: 200px;
+        }
+        .ptt-icon { font-size: 2em; margin-bottom: 5px; }
+        .ptt-status {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #888;
+            min-height: 30px;
+        }
+        .ptt-status.transmitting {
+            color: #00d4ff;
+            font-weight: bold;
+        }
+        .volume-control {
+            margin-top: 20px;
+            padding: 0 20px;
+        }
+        .volume-control label {
+            display: block;
+            margin-bottom: 8px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .volume-control input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+        }
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #00d4ff;
+            cursor: pointer;
+        }
+        .visualizer {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 40px;
+            gap: 3px;
+            margin-top: 15px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .visualizer.active { opacity: 1; }
+        .bar {
+            width: 4px;
+            background: #00d4ff;
+            border-radius: 2px;
+            transition: height 0.1s;
+        }
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            z-index: 1000;
+        }
+        .connection-status.connected {
+            background: rgba(0,255,0,0.2);
+            color: #00ff88;
+        }
+        .connection-status.disconnected {
+            background: rgba(255,0,0,0.2);
+            color: #ff4444;
+        }
+        .connection-status.connecting {
+            background: rgba(255,165,0,0.2);
+            color: #ffaa00;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
+        ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 3px; }
+        @media (max-width: 480px) {
+            .container { padding: 10px; }
+            .ptt-button { width: 150px; height: 150px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="connection-status disconnected" id="connectionStatus">Disconnected</div>
+    <div class="container">
+        <div class="login-screen" id="loginScreen">
+            <h1>Walkie-Talkie</h1>
+            <p class="subtitle">Push-to-Talk with your friends</p>
+            <div class="input-group">
+                <input type="text" id="nicknameInput" placeholder="Enter your nickname" maxlength="20">
+            </div>
+            <div class="input-group">
+                <input type="text" id="channelInput" placeholder="Channel name (default: general)" maxlength="20">
+            </div>
+            <button class="btn btn-primary" id="joinBtn">Join Channel</button>
+        </div>
+        <div class="app-screen" id="appScreen">
+            <div class="app-header">
+                <h2>Walkie-Talkie</h2>
+                <span class="channel-badge" id="channelBadge">general</span>
+            </div>
+            <div class="users-list" id="usersList">
+                <h3>Channel Users</h3>
+                <div id="usersContainer"></div>
+            </div>
+            <div class="ptt-area">
+                <button class="ptt-button" id="pttButton">
+                    <div class="ptt-icon">🎙️</div>
+                    <div>PUSH TO TALK</div>
+                </button>
+                <div class="visualizer" id="visualizer">
+                    <div class="bar" style="height: 5px"></div>
+                    <div class="bar" style="height: 10px"></div>
+                    <div class="bar" style="height: 15px"></div>
+                    <div class="bar" style="height: 20px"></div>
+                    <div class="bar" style="height: 15px"></div>
+                    <div class="bar" style="height: 10px"></div>
+                    <div class="bar" style="height: 5px"></div>
+                </div>
+                <div class="ptt-status" id="pttStatus">Hold button to talk</div>
+                <div class="volume-control">
+                    <label>Speaker Volume</label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="80">
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
