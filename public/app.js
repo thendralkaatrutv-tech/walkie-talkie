@@ -6,6 +6,8 @@ class WalkieTalkie {
         this.nickname = '';
         this.channel = 'general';
         this.isTalking = false;
+        this.isAdmin = false;
+        this.isMuted = false;
         this.audioContext = null;
         this.analyser = null;
         this.dataArray = null;
@@ -14,14 +16,20 @@ class WalkieTalkie {
         this.appScreen = document.getElementById('appScreen');
         this.nicknameInput = document.getElementById('nicknameInput');
         this.channelInput = document.getElementById('channelInput');
+        this.adminCheck = document.getElementById('adminCheck');
+        this.adminPasswordGroup = document.getElementById('adminPasswordGroup');
+        this.adminPassword = document.getElementById('adminPassword');
+        this.errorMessage = document.getElementById('errorMessage');
         this.joinBtn = document.getElementById('joinBtn');
         this.pttButton = document.getElementById('pttButton');
         this.pttStatus = document.getElementById('pttStatus');
         this.usersContainer = document.getElementById('usersContainer');
         this.channelBadge = document.getElementById('channelBadge');
+        this.adminBadge = document.getElementById('adminBadge');
         this.connectionStatus = document.getElementById('connectionStatus');
         this.visualizer = document.getElementById('visualizer');
         this.volumeSlider = document.getElementById('volumeSlider');
+        this.kickedOverlay = document.getElementById('kickedOverlay');
 
         this.iceServers = {
             iceServers: [
@@ -38,6 +46,10 @@ class WalkieTalkie {
         this.joinBtn.addEventListener('click', () => this.joinChannel());
         this.nicknameInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.joinChannel();
+        });
+
+        this.adminCheck.addEventListener('change', () => {
+            this.adminPasswordGroup.classList.toggle('show', this.adminCheck.checked);
         });
 
         this.pttButton.addEventListener('mousedown', () => this.startTalking());
@@ -61,7 +73,7 @@ class WalkieTalkie {
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.isTalking && this.appScreen.style.display !== 'none') {
+            if (e.code === 'Space' && !this.isTalking && this.appScreen.style.display !== 'none' && !this.isMuted) {
                 e.preventDefault();
                 this.startTalking();
             }
@@ -75,12 +87,25 @@ class WalkieTalkie {
         });
     }
 
+    showError(msg) {
+        this.errorMessage.textContent = msg;
+        this.errorMessage.classList.add('show');
+        setTimeout(() => this.errorMessage.classList.remove('show'), 4000);
+    }
+
     async joinChannel() {
         this.nickname = this.nicknameInput.value.trim() || 'Anonymous';
         this.channel = this.channelInput.value.trim() || 'general';
+        const isAdmin = this.adminCheck.checked;
+        const adminPassword = isAdmin ? this.adminPassword.value : '';
 
         if (this.nickname.length < 2) {
-            alert('Please enter a nickname (at least 2 characters)');
+            this.showError('Please enter a nickname (at least 2 characters)');
+            return;
+        }
+
+        if (isAdmin && !adminPassword) {
+            this.showError('Please enter admin password');
             return;
         }
 
@@ -101,15 +126,15 @@ class WalkieTalkie {
                 track.enabled = false;
             });
 
-            this.connectSocket();
+            this.connectSocket(isAdmin, adminPassword);
 
         } catch (err) {
             console.error('Error accessing microphone:', err);
-            alert('Could not access microphone. Please allow microphone permission and try again.');
+            this.showError('Could not access microphone. Please allow microphone permission and try again.');
         }
     }
 
-    connectSocket() {
+    connectSocket(isAdmin, adminPassword) {
         this.socket = io();
 
         this.socket.on('connect', () => {
@@ -117,7 +142,9 @@ class WalkieTalkie {
             this.updateConnectionStatus('connected');
             this.socket.emit('join', {
                 nickname: this.nickname,
-                channel: this.channel
+                channel: this.channel,
+                isAdmin: isAdmin,
+                adminPassword: adminPassword
             });
         });
 
@@ -126,8 +153,18 @@ class WalkieTalkie {
             this.updateConnectionStatus('disconnected');
         });
 
-        this.socket.on('channel-users', (users) => {
-            users.forEach(user => {
+        this.socket.on('join-error', (data) => {
+            this.showError(data.message);
+            this.localStream.getTracks().forEach(track => track.stop());
+            this.localStream = null;
+        });
+
+        this.socket.on('join-success', (data) => {
+            this.isAdmin = data.isAdmin;
+            if (this.isAdmin) {
+                this.adminBadge.style.display = 'inline-block';
+            }
+            data.users.forEach(user => {
                 this.addUserToList(user);
                 this.createPeerConnection(user.id, true);
             });
@@ -147,6 +184,30 @@ class WalkieTalkie {
 
         this.socket.on('user-talking', (data) => {
             this.updateUserTalkingStatus(data.id, data.status);
+        });
+
+        this.socket.on('user-muted', (data) => {
+            this.updateUserMuteStatus(data.id, data.muted);
+        });
+
+        this.socket.on('kicked', (data) => {
+            this.kickedOverlay.querySelector('p').textContent = data.message;
+            this.kickedOverlay.classList.add('show');
+            this.localStream.getTracks().forEach(track => track.stop());
+        });
+
+        this.socket.on('muted', (data) => {
+            this.isMuted = data.muted;
+            if (this.isMuted) {
+                this.pttButton.disabled = true;
+                this.pttStatus.textContent = '🔇 You are muted by admin';
+                this.pttStatus.classList.add('muted');
+                this.stopTalking();
+            } else {
+                this.pttButton.disabled = false;
+                this.pttStatus.textContent = 'Hold button to talk';
+                this.pttStatus.classList.remove('muted');
+            }
         });
 
         this.socket.on('offer', async (data) => {
@@ -265,7 +326,7 @@ class WalkieTalkie {
     }
 
     startTalking() {
-        if (this.isTalking) return;
+        if (this.isTalking || this.isMuted) return;
         this.isTalking = true;
         this.pttButton.classList.add('active');
         this.pttStatus.textContent = '🎙️ TRANSMITTING...';
@@ -289,7 +350,9 @@ class WalkieTalkie {
         if (!this.isTalking) return;
         this.isTalking = false;
         this.pttButton.classList.remove('active');
-        this.pttStatus.textContent = 'Hold button to talk';
+        if (!this.isMuted) {
+            this.pttStatus.textContent = 'Hold button to talk';
+        }
         this.pttStatus.classList.remove('transmitting');
         this.visualizer.classList.remove('active');
 
@@ -329,15 +392,27 @@ class WalkieTalkie {
         const existing = document.getElementById(`user-${user.id}`);
         if (existing) return;
         const userEl = document.createElement('div');
-        userEl.className = 'user-item';
+        userEl.className = 'user-item' + (user.isAdmin ? ' admin' : '');
         userEl.id = `user-${user.id}`;
+
+        const adminActions = this.isAdmin && !user.isAdmin ? `
+            <div class="admin-actions">
+                <button class="admin-btn kick" onclick="walkieTalkie.kickUser('${user.id}')">Kick</button>
+                <button class="admin-btn mute" id="mute-btn-${user.id}" onclick="walkieTalkie.muteUser('${user.id}')">Mute</button>
+            </div>
+        ` : '';
+
         userEl.innerHTML = `
-            <div class="user-avatar">${user.nickname.charAt(0).toUpperCase()}</div>
+            <div class="user-avatar">
+                ${user.nickname.charAt(0).toUpperCase()}
+                ${user.isAdmin ? '<span class="admin-icon">👑</span>' : ''}
+            </div>
             <div class="user-info">
-                <div class="user-name">${this.escapeHtml(user.nickname)}</div>
+                <div class="user-name">${this.escapeHtml(user.nickname)}${user.isAdmin ? '<span class="admin-label">ADMIN</span>' : ''}</div>
                 <div class="user-status">Idle</div>
             </div>
             <div class="talking-indicator"></div>
+            ${adminActions}
         `;
         this.usersContainer.appendChild(userEl);
     }
@@ -359,6 +434,45 @@ class WalkieTalkie {
                 userEl.classList.remove('talking');
                 userEl.querySelector('.user-status').textContent = 'Idle';
             }
+        }
+    }
+
+    updateUserMuteStatus(userId, muted) {
+        const userEl = document.getElementById(`user-${userId}`);
+        if (userEl) {
+            if (muted) {
+                userEl.classList.add('muted');
+                userEl.querySelector('.user-status').textContent = '🔇 Muted';
+            } else {
+                userEl.classList.remove('muted');
+                userEl.querySelector('.user-status').textContent = 'Idle';
+            }
+            const muteBtn = document.getElementById(`mute-btn-${userId}`);
+            if (muteBtn) {
+                muteBtn.textContent = muted ? 'Unmute' : 'Mute';
+                muteBtn.className = muted ? 'admin-btn unmute' : 'admin-btn mute';
+                muteBtn.setAttribute('onclick', muted ? 
+                    `walkieTalkie.unmuteUser('${userId}')` : 
+                    `walkieTalkie.muteUser('${userId}')`);
+            }
+        }
+    }
+
+    kickUser(userId) {
+        if (this.socket && this.isAdmin) {
+            this.socket.emit('kick-user', { targetId: userId });
+        }
+    }
+
+    muteUser(userId) {
+        if (this.socket && this.isAdmin) {
+            this.socket.emit('mute-user', { targetId: userId });
+        }
+    }
+
+    unmuteUser(userId) {
+        if (this.socket && this.isAdmin) {
+            this.socket.emit('unmute-user', { targetId: userId });
         }
     }
 
@@ -386,6 +500,7 @@ class WalkieTalkie {
     }
 }
 
+let walkieTalkie;
 document.addEventListener('DOMContentLoaded', () => {
-    new WalkieTalkie();
+    walkieTalkie = new WalkieTalkie();
 });
