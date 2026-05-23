@@ -13,7 +13,7 @@ const io = new Server(server, {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
-
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 // ===== ADMIN CONFIG =====
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 // ========================
