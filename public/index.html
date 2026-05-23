@@ -57,6 +57,40 @@
         .input-group input::placeholder {
             color: #666;
         }
+        .admin-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .admin-toggle input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: #00d4ff;
+            cursor: pointer;
+        }
+        .admin-toggle label {
+            color: #00d4ff;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .admin-password {
+            display: none;
+        }
+        .admin-password.show {
+            display: block;
+        }
+        .error-message {
+            color: #ff4444;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .error-message.show {
+            display: block;
+        }
         .btn {
             width: 100%;
             padding: 15px;
@@ -94,6 +128,11 @@
             color: #00d4ff;
             font-size: 1.3em;
         }
+        .header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
         .channel-badge {
             background: rgba(0,212,255,0.2);
             color: #00d4ff;
@@ -101,9 +140,19 @@
             border-radius: 20px;
             font-size: 0.85em;
         }
+        .admin-badge {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: #fff;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         .users-list {
             padding: 20px;
-            max-height: 200px;
+            max-height: 250px;
             overflow-y: auto;
         }
         .users-list h3 {
@@ -121,10 +170,14 @@
             background: rgba(255,255,255,0.03);
             border-radius: 10px;
             transition: all 0.3s;
+            position: relative;
         }
         .user-item.talking {
             background: rgba(0,212,255,0.15);
             border: 1px solid rgba(0,212,255,0.3);
+        }
+        .user-item.muted {
+            opacity: 0.5;
         }
         .user-avatar {
             width: 40px;
@@ -136,10 +189,29 @@
             justify-content: center;
             font-weight: bold;
             margin-right: 12px;
+            position: relative;
         }
         .user-item.talking .user-avatar {
             background: linear-gradient(135deg, #00d4ff, #0099cc);
             animation: pulse 1s infinite;
+        }
+        .user-item.admin .user-avatar {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+        }
+        .admin-icon {
+            position: absolute;
+            bottom: -2px;
+            right: -2px;
+            background: #ff6b6b;
+            color: #fff;
+            font-size: 0.6em;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #1a1a2e;
         }
         @keyframes pulse {
             0%, 100% { transform: scale(1); }
@@ -147,6 +219,11 @@
         }
         .user-info { flex: 1; }
         .user-name { font-weight: 600; }
+        .user-name .admin-label {
+            color: #ff6b6b;
+            font-size: 0.75em;
+            margin-left: 5px;
+        }
         .user-status { font-size: 0.8em; color: #888; }
         .talking-indicator {
             width: 12px;
@@ -162,6 +239,40 @@
         @keyframes blink {
             from { opacity: 1; }
             to { opacity: 0.3; }
+        }
+        .admin-actions {
+            display: flex;
+            gap: 5px;
+            margin-left: 8px;
+        }
+        .admin-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.7em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .admin-btn.kick {
+            background: rgba(255,68,68,0.3);
+            color: #ff4444;
+        }
+        .admin-btn.kick:hover {
+            background: rgba(255,68,68,0.5);
+        }
+        .admin-btn.mute {
+            background: rgba(255,165,0,0.3);
+            color: #ffaa00;
+        }
+        .admin-btn.mute:hover {
+            background: rgba(255,165,0,0.5);
+        }
+        .admin-btn.unmute {
+            background: rgba(0,255,136,0.3);
+            color: #00ff88;
+        }
+        .admin-btn.unmute:hover {
+            background: rgba(0,255,136,0.5);
         }
         .ptt-area {
             padding: 30px;
@@ -207,6 +318,10 @@
             width: 200px;
             height: 200px;
         }
+        .ptt-button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
         .ptt-icon { font-size: 2em; margin-bottom: 5px; }
         .ptt-status {
             margin-top: 20px;
@@ -217,6 +332,9 @@
         .ptt-status.transmitting {
             color: #00d4ff;
             font-weight: bold;
+        }
+        .ptt-status.muted {
+            color: #ff4444;
         }
         .volume-control {
             margin-top: 20px;
@@ -283,6 +401,31 @@
             background: rgba(255,165,0,0.2);
             color: #ffaa00;
         }
+        .kicked-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .kicked-overlay.show {
+            display: flex;
+        }
+        .kicked-overlay h2 {
+            color: #ff4444;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .kicked-overlay p {
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .kicked-overlay .btn {
+            max-width: 200px;
+        }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
         ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 3px; }
@@ -291,9 +434,17 @@
             .ptt-button { width: 150px; height: 150px; }
         }
     </style>
+<base target="_blank">
 </head>
 <body>
     <div class="connection-status disconnected" id="connectionStatus">Disconnected</div>
+
+    <div class="kicked-overlay" id="kickedOverlay">
+        <h2>Kicked by Admin</h2>
+        <p>You have been removed from the channel by an administrator.</p>
+        <button class="btn btn-primary" onclick="location.reload()">Rejoin</button>
+    </div>
+
     <div class="container">
         <div class="login-screen" id="loginScreen">
             <h1>Walkie-Talkie</h1>
@@ -304,12 +455,23 @@
             <div class="input-group">
                 <input type="text" id="channelInput" placeholder="Channel name (default: general)" maxlength="20">
             </div>
+            <div class="admin-toggle">
+                <input type="checkbox" id="adminCheck">
+                <label for="adminCheck">Join as Admin</label>
+            </div>
+            <div class="input-group admin-password" id="adminPasswordGroup">
+                <input type="password" id="adminPassword" placeholder="Admin password">
+            </div>
+            <div class="error-message" id="errorMessage"></div>
             <button class="btn btn-primary" id="joinBtn">Join Channel</button>
         </div>
         <div class="app-screen" id="appScreen">
             <div class="app-header">
                 <h2>Walkie-Talkie</h2>
-                <span class="channel-badge" id="channelBadge">general</span>
+                <div class="header-badges">
+                    <span class="admin-badge" id="adminBadge" style="display:none">ADMIN</span>
+                    <span class="channel-badge" id="channelBadge">general</span>
+                </div>
             </div>
             <div class="users-list" id="usersList">
                 <h3>Channel Users</h3>
