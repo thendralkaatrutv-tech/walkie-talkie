@@ -27,7 +27,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// PUBLIC ROUTES (no password needed)
+// PUBLIC ROUTES (no password needed) - MUST BE FIRST
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -35,10 +35,10 @@ app.get('/login', (req, res) => {
 app.post('/auth', (req, res) => {
     const { password } = req.body;
     if (password === URL_PASSWORD) {
-        res.cookie('walkie_auth', 'true', { 
+        res.cookie('walkie_auth', URL_PASSWORD, { 
             maxAge: 24 * 60 * 60 * 1000, 
-            httpOnly: true,
-            sameSite: 'lax'
+            httpOnly: false,
+            path: '/'
         });
         res.json({ success: true });
     } else {
@@ -49,17 +49,22 @@ app.post('/auth', (req, res) => {
 // PROTECTION MIDDLEWARE
 app.use((req, res, next) => {
     // Allow login routes
-    if (req.path === '/login' || req.path === '/auth') {
+    if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login')) {
         return next();
     }
     
-    // Check auth cookie
-    if (req.cookies && req.cookies.walkie_auth === 'true') {
+    // Check auth cookie - compare against URL_PASSWORD
+    if (req.cookies && req.cookies.walkie_auth === URL_PASSWORD) {
         return next();
     }
     
-    // Redirect to login
-    res.redirect('/login');
+    // For HTML requests, redirect to login
+    if (req.headers.accept && req.headers.accept.includes('text/html')) {
+        return res.redirect('/login');
+    }
+    
+    // For other requests, send 401
+    res.status(401).send('Unauthorized');
 });
 
 // STATIC FILES (protected)
