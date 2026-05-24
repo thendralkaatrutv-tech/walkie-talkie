@@ -143,6 +143,17 @@
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') doLogin();
         });
-    </script>
+    </script> 
+    <script>
+    // Attach auth token to all fetch requests
+    const token = localStorage.getItem('walkie_token');
+    if (token) {
+        // Add token to current URL if not present
+        if (!window.location.search.includes('token=')) {
+            const newUrl = window.location.pathname + '?token=' + encodeURIComponent(token);
+            window.history.replaceState({}, '', newUrl);
+        }
+    }
+</script>
 </body>
 </html>
