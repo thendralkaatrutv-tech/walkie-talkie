@@ -23,6 +23,7 @@ channels.set('general', { name: 'General', users: new Set() });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// PUBLIC ROUTES
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -38,29 +39,21 @@ app.post('/auth', (req, res) => {
     }
 });
 
-app.use((req, res, next) => {
-    if (req.path === '/login' || req.path === '/auth') {
-        return next();
-    }
-    
-    const token = req.query.token || req.headers['x-auth-token'];
+// PROTECT ONLY THE MAIN PAGE
+app.get('/', (req, res, next) => {
+    const token = req.query.token;
     if (token && sessions.has(token)) {
-        return next();
+        // Valid token - serve the app
+        return res.sendFile(path.join(__dirname, 'public', 'index.html'));
     }
-    
-    if (req.headers.accept && req.headers.accept.includes('text/html')) {
-        return res.redirect('/login');
-    }
-    
-    if (req.path.endsWith('.js') || req.path.endsWith('.css') || req.path.startsWith('/socket.io')) {
-        return next();
-    }
-    
-    res.status(401).send('Unauthorized');
+    // No token - redirect to login
+    res.redirect('/login');
 });
 
+// ALL OTHER STATIC FILES - NO AUTH NEEDED
 app.use(express.static(path.join(__dirname, 'public')));
 
+// SOCKET.IO
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
