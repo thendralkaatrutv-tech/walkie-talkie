@@ -9,7 +9,7 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-    }
+   const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
 });
 
 // ===== URL PASSWORD PROTECTION =====
