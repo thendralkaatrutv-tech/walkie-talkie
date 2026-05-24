@@ -8,8 +8,6 @@ class WalkieTalkie {
         this.isTalking = false;
         this.isAdmin = false;
         this.isMuted = false;
-        this.isCamOn = false;
-        this.isMicOn = true;
         this.audioContext = null;
         this.analyser = null;
         this.dataArray = null;
@@ -32,11 +30,6 @@ class WalkieTalkie {
         this.visualizer = document.getElementById('visualizer');
         this.volumeSlider = document.getElementById('volumeSlider');
         this.kickedOverlay = document.getElementById('kickedOverlay');
-        this.localVideo = document.getElementById('localVideo');
-        this.videoGrid = document.getElementById('videoGrid');
-        this.camBtn = document.getElementById('camBtn');
-        this.micBtn = document.getElementById('micBtn');
-        this.leaveBtn = document.getElementById('leaveBtn');
 
         this.iceServers = {
             iceServers: [
@@ -78,10 +71,6 @@ class WalkieTalkie {
                 audio.volume = volume;
             });
         });
-
-        this.camBtn.addEventListener('click', () => this.toggleCamera());
-        this.micBtn.addEventListener('click', () => this.toggleMic());
-        this.leaveBtn.addEventListener('click', () => this.leaveChannel());
 
         document.addEventListener('keydown', (e) => {
             if (e.code === 'Space' && !this.isTalking && this.appScreen.style.display !== 'none' && !this.isMuted) {
@@ -130,8 +119,6 @@ class WalkieTalkie {
                 },
                 video: false
             });
-
-            this.localVideo.srcObject = this.localStream;
 
             this.setupAudioVisualization();
 
@@ -195,7 +182,6 @@ class WalkieTalkie {
             console.log('User left:', user.nickname);
             this.removeUserFromList(user.id);
             this.closePeerConnection(user.id);
-            this.removeRemoteVideo(user.id);
         });
 
         this.socket.on('user-talking', (data) => {
@@ -257,7 +243,6 @@ class WalkieTalkie {
             pc.ontrack = (event) => {
                 console.log('Received remote stream from:', peerId);
                 this.playRemoteStream(peerId, event.streams[0]);
-                this.addRemoteVideo(peerId, event.streams[0]);
             };
 
             pc.onicecandidate = (event) => {
@@ -331,51 +316,6 @@ class WalkieTalkie {
         }
     }
 
-    addRemoteVideo(peerId, stream) {
-        let container = document.getElementById(`video-container-${peerId}`);
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'video-container';
-            container.id = `video-container-${peerId}`;
-            
-            const video = document.createElement('video');
-            video.id = `video-${peerId}`;
-            video.autoplay = true;
-            video.playsInline = true;
-            
-            const label = document.createElement('span');
-            label.className = 'video-label';
-            label.id = `video-label-${peerId}`;
-            
-            const muteIcon = document.createElement('span');
-            muteIcon.className = 'video-mute-icon';
-            muteIcon.textContent = '🔇';
-            
-            container.appendChild(video);
-            container.appendChild(label);
-            container.appendChild(muteIcon);
-            this.videoGrid.appendChild(container);
-        }
-        const video = container.querySelector('video');
-        video.srcObject = stream;
-        video.play().catch(err => console.log('Video play error:', err));
-        
-        const user = Array.from(this.usersContainer.children).find(el => el.id === `user-${peerId}`);
-        if (user) {
-            const name = user.querySelector('.user-name');
-            if (name) {
-                document.getElementById(`video-label-${peerId}`).textContent = name.textContent.replace('ADMIN', '').trim();
-            }
-        }
-    }
-
-    removeRemoteVideo(peerId) {
-        const container = document.getElementById(`video-container-${peerId}`);
-        if (container) {
-            container.remove();
-        }
-    }
-
     playRemoteStream(peerId, stream) {
         let audio = document.getElementById(`audio-${peerId}`);
         if (!audio) {
@@ -389,74 +329,8 @@ class WalkieTalkie {
         audio.play().catch(err => console.log('Audio play error:', err));
     }
 
-    async toggleCamera() {
-        if (!this.localStream) return;
-        
-        const videoTracks = this.localStream.getVideoTracks();
-        
-        if (this.isCamOn) {
-            videoTracks.forEach(track => {
-                track.stop();
-                this.localStream.removeTrack(track);
-            });
-            this.isCamOn = false;
-            this.camBtn.classList.remove('active');
-            this.localVideo.srcObject = this.localStream;
-        } else {
-            try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const videoTrack = videoStream.getVideoTracks()[0];
-                this.localStream.addTrack(videoTrack);
-                this.isCamOn = true;
-                this.camBtn.classList.add('active');
-                this.localVideo.srcObject = this.localStream;
-                
-                this.peers.forEach((pc, peerId) => {
-                    const sender = pc.getSenders().find(s => s.track && s.track.kind === 'video');
-                    if (sender) {
-                        sender.replaceTrack(videoTrack);
-                    } else {
-                        pc.addTrack(videoTrack, this.localStream);
-                    }
-                });
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                this.showError('Could not access camera');
-            }
-        }
-    }
-
-    toggleMic() {
-        if (!this.localStream) return;
-        
-        const audioTracks = this.localStream.getAudioTracks();
-        this.isMicOn = !this.isMicOn;
-        
-        audioTracks.forEach(track => {
-            track.enabled = this.isMicOn;
-        });
-        
-        if (this.isMicOn) {
-            this.micBtn.classList.remove('off');
-            this.micBtn.classList.add('active');
-        } else {
-            this.micBtn.classList.remove('active');
-            this.micBtn.classList.add('off');
-        }
-    }
-
-    leaveChannel() {
-        if (this.socket) {
-            this.socket.disconnect();
-        }
-        if (this.localStream) {
-            this.localStream.getTracks().forEach(track => track.stop());
-        }
-        location.reload();
-    }
-
     startTalking() {
-        if (this.isTalking || this.isMuted || !this.isMicOn) return;
+        if (this.isTalking || this.isMuted) return;
         this.isTalking = true;
         this.pttButton.classList.add('active');
         this.pttStatus.textContent = '🎙️ TRANSMITTING...';
@@ -480,9 +354,7 @@ class WalkieTalkie {
         if (!this.isTalking) return;
         this.isTalking = false;
         this.pttButton.classList.remove('active');
-        if (!this.isMuted) {
-            this.pttStatus.textContent = 'Hold button to talk';
-        }
+        this.pttStatus.textContent = 'Hold button to talk';
         this.pttStatus.classList.remove('transmitting');
         this.visualizer.classList.remove('active');
 
@@ -585,10 +457,6 @@ class WalkieTalkie {
                     `walkieTalkie.unmuteUser('${userId}')` : 
                     `walkieTalkie.muteUser('${userId}')`);
             }
-        }
-        const videoContainer = document.getElementById(`video-container-${userId}`);
-        if (videoContainer) {
-            videoContainer.classList.toggle('muted', muted);
         }
     }
 
