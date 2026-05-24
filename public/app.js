@@ -31,7 +31,6 @@ class WalkieTalkie {
         this.volumeSlider = document.getElementById('volumeSlider');
         this.kickedOverlay = document.getElementById('kickedOverlay');
         
-        // Chat elements
         this.chatInput = document.getElementById('chatInput');
         this.chatSendBtn = document.getElementById('chatSendBtn');
         this.chatMessages = document.getElementById('chatMessages');
@@ -48,43 +47,58 @@ class WalkieTalkie {
     }
 
     init() {
-        this.joinBtn.addEventListener('click', () => this.joinChannel());
-        this.nicknameInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.joinChannel();
-        });
+        const isLoginPage = this.joinBtn !== null;
 
-        this.adminCheck.addEventListener('change', () => {
-            this.adminPasswordGroup.classList.toggle('show', this.adminCheck.checked);
-        });
-
-        this.pttButton.addEventListener('mousedown', () => this.startTalking());
-        this.pttButton.addEventListener('mouseup', () => this.stopTalking());
-        this.pttButton.addEventListener('mouseleave', () => this.stopTalking());
-
-        this.pttButton.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            this.startTalking();
-        });
-        this.pttButton.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            this.stopTalking();
-        });
-
-        this.volumeSlider.addEventListener('input', (e) => {
-            const volume = e.target.value / 100;
-            document.querySelectorAll('audio').forEach(audio => {
-                audio.volume = volume;
+        if (isLoginPage) {
+            // Login page mode - wait for user to click join
+            this.joinBtn.addEventListener('click', () => this.joinChannel());
+            this.nicknameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.joinChannel();
             });
-        });
+            this.adminCheck.addEventListener('change', () => {
+                this.adminPasswordGroup.classList.toggle('show', this.adminCheck.checked);
+            });
+        } else {
+            // Main app page - auto join with random nickname
+            this.nickname = 'User-' + Math.floor(Math.random() * 10000);
+            this.channel = 'general';
+            this.autoJoin();
+        }
 
-        // Chat event listeners
-        this.chatSendBtn.addEventListener('click', () => this.sendChatMessage());
-        this.chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.sendChatMessage();
-        });
+        if (this.pttButton) {
+            this.pttButton.addEventListener('mousedown', () => this.startTalking());
+            this.pttButton.addEventListener('mouseup', () => this.stopTalking());
+            this.pttButton.addEventListener('mouseleave', () => this.stopTalking());
+            this.pttButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.startTalking();
+            });
+            this.pttButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                this.stopTalking();
+            });
+        }
+
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (e) => {
+                const volume = e.target.value / 100;
+                document.querySelectorAll('audio').forEach(audio => {
+                    audio.volume = volume;
+                });
+            });
+        }
+
+        if (this.chatSendBtn) {
+            this.chatSendBtn.addEventListener('click', () => this.sendChatMessage());
+        }
+        if (this.chatInput) {
+            this.chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.sendChatMessage();
+            });
+        }
 
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !this.isTalking && this.appScreen.style.display !== 'none' && !this.isMuted) {
+            if (e.code === 'Space' && !this.isTalking && this.appScreen && this.appScreen.style.display !== 'none' && !this.isMuted) {
                 e.preventDefault();
                 this.startTalking();
             }
@@ -99,6 +113,7 @@ class WalkieTalkie {
     }
 
     showError(msg) {
+        if (!this.errorMessage) return;
         this.errorMessage.textContent = msg;
         this.errorMessage.classList.add('show');
         setTimeout(() => this.errorMessage.classList.remove('show'), 4000);
@@ -132,7 +147,6 @@ class WalkieTalkie {
             });
 
             this.setupAudioVisualization();
-
             this.localStream.getAudioTracks().forEach(track => {
                 track.enabled = false;
             });
@@ -142,6 +156,31 @@ class WalkieTalkie {
         } catch (err) {
             console.error('Error accessing microphone:', err);
             this.showError('Could not access microphone. Please allow microphone permission and try again.');
+        }
+    }
+
+    async autoJoin() {
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 48000
+                },
+                video: false
+            });
+
+            this.setupAudioVisualization();
+            this.localStream.getAudioTracks().forEach(track => {
+                track.enabled = false;
+            });
+
+            this.connectSocket(false, '');
+
+        } catch (err) {
+            console.error('Error accessing microphone:', err);
+            alert('Could not access microphone. Please allow microphone permission and try again.');
         }
     }
 
@@ -174,13 +213,16 @@ class WalkieTalkie {
 
         this.socket.on('join-success', (data) => {
             this.isAdmin = data.isAdmin;
-            if (this.isAdmin) {
+            if (this.isAdmin && this.adminBadge) {
                 this.adminBadge.style.display = 'inline-block';
             }
             data.users.forEach(user => {
                 this.addUserToList(user);
                 this.createPeerConnection(user.id, true);
             });
+            if (this.loginScreen) this.loginScreen.style.display = 'none';
+            if (this.appScreen) this.appScreen.style.display = 'block';
+            if (this.channelBadge) this.channelBadge.textContent = this.channel;
         });
 
         this.socket.on('user-joined', (user) => {
@@ -204,8 +246,10 @@ class WalkieTalkie {
         });
 
         this.socket.on('kicked', (data) => {
-            this.kickedOverlay.querySelector('p').textContent = data.message;
-            this.kickedOverlay.classList.add('show');
+            if (this.kickedOverlay) {
+                this.kickedOverlay.querySelector('p').textContent = data.message;
+                this.kickedOverlay.classList.add('show');
+            }
             if (this.localStream) {
                 this.localStream.getTracks().forEach(track => track.stop());
             }
@@ -214,18 +258,21 @@ class WalkieTalkie {
         this.socket.on('muted', (data) => {
             this.isMuted = data.muted;
             if (this.isMuted) {
-                this.pttButton.disabled = true;
-                this.pttStatus.textContent = '🔇 You are muted by admin';
-                this.pttStatus.classList.add('muted');
+                if (this.pttButton) this.pttButton.disabled = true;
+                if (this.pttStatus) {
+                    this.pttStatus.textContent = '🔇 You are muted by admin';
+                    this.pttStatus.classList.add('muted');
+                }
                 this.stopTalking();
             } else {
-                this.pttButton.disabled = false;
-                this.pttStatus.textContent = 'Hold button to talk';
-                this.pttStatus.classList.remove('muted');
+                if (this.pttButton) this.pttButton.disabled = false;
+                if (this.pttStatus) {
+                    this.pttStatus.textContent = 'Hold button to talk';
+                    this.pttStatus.classList.remove('muted');
+                }
             }
         });
 
-        // Chat events
         this.socket.on('chat-message', (data) => {
             this.displayChatMessage(data);
         });
@@ -241,13 +288,8 @@ class WalkieTalkie {
         this.socket.on('ice-candidate', async (data) => {
             await this.handleIceCandidate(data);
         });
-
-        this.loginScreen.style.display = 'none';
-        this.appScreen.style.display = 'block';
-        this.channelBadge.textContent = this.channel;
     }
 
-    // CHAT METHODS
     sendChatMessage() {
         const text = this.chatInput.value.trim();
         if (!text || !this.socket) return;
@@ -261,6 +303,7 @@ class WalkieTalkie {
     }
 
     displayChatMessage(data) {
+        if (!this.chatMessages) return;
         const msgEl = document.createElement('div');
         msgEl.className = 'chat-message' + (data.senderId === this.socket.id ? ' own' : '');
         
@@ -365,7 +408,7 @@ class WalkieTalkie {
             audio = document.createElement('audio');
             audio.id = `audio-${peerId}`;
             audio.autoplay = true;
-            audio.volume = this.volumeSlider.value / 100;
+            audio.volume = this.volumeSlider ? this.volumeSlider.value / 100 : 0.8;
             document.body.appendChild(audio);
         }
         audio.srcObject = stream;
@@ -375,10 +418,12 @@ class WalkieTalkie {
     startTalking() {
         if (this.isTalking || this.isMuted) return;
         this.isTalking = true;
-        this.pttButton.classList.add('active');
-        this.pttStatus.textContent = '🎙️ TRANSMITTING...';
-        this.pttStatus.classList.add('transmitting');
-        this.visualizer.classList.add('active');
+        if (this.pttButton) this.pttButton.classList.add('active');
+        if (this.pttStatus) {
+            this.pttStatus.textContent = '🎙️ TRANSMITTING...';
+            this.pttStatus.classList.add('transmitting');
+        }
+        if (this.visualizer) this.visualizer.classList.add('active');
 
         if (this.localStream) {
             this.localStream.getAudioTracks().forEach(track => {
@@ -396,10 +441,12 @@ class WalkieTalkie {
     stopTalking() {
         if (!this.isTalking) return;
         this.isTalking = false;
-        this.pttButton.classList.remove('active');
-        this.pttStatus.textContent = 'Hold button to talk';
-        this.pttStatus.classList.remove('transmitting');
-        this.visualizer.classList.remove('active');
+        if (this.pttButton) this.pttButton.classList.remove('active');
+        if (this.pttStatus) {
+            this.pttStatus.textContent = 'Hold button to talk';
+            this.pttStatus.classList.remove('transmitting');
+        }
+        if (this.visualizer) this.visualizer.classList.remove('active');
 
         if (this.localStream) {
             this.localStream.getAudioTracks().forEach(track => {
@@ -434,6 +481,7 @@ class WalkieTalkie {
     }
 
     addUserToList(user) {
+        if (!this.usersContainer) return;
         const existing = document.getElementById(`user-${user.id}`);
         if (existing) return;
         const userEl = document.createElement('div');
@@ -474,10 +522,12 @@ class WalkieTalkie {
         if (userEl) {
             if (status === 'talking') {
                 userEl.classList.add('talking');
-                userEl.querySelector('.user-status').textContent = '🔊 Talking...';
+                const statusEl = userEl.querySelector('.user-status');
+                if (statusEl) statusEl.textContent = '🔊 Talking...';
             } else {
                 userEl.classList.remove('talking');
-                userEl.querySelector('.user-status').textContent = 'Idle';
+                const statusEl = userEl.querySelector('.user-status');
+                if (statusEl) statusEl.textContent = 'Idle';
             }
         }
     }
@@ -487,10 +537,12 @@ class WalkieTalkie {
         if (userEl) {
             if (muted) {
                 userEl.classList.add('muted');
-                userEl.querySelector('.user-status').textContent = '🔇 Muted';
+                const statusEl = userEl.querySelector('.user-status');
+                if (statusEl) statusEl.textContent = '🔇 Muted';
             } else {
                 userEl.classList.remove('muted');
-                userEl.querySelector('.user-status').textContent = 'Idle';
+                const statusEl = userEl.querySelector('.user-status');
+                if (statusEl) statusEl.textContent = 'Idle';
             }
             const muteBtn = document.getElementById(`mute-btn-${userId}`);
             if (muteBtn) {
@@ -534,6 +586,7 @@ class WalkieTalkie {
     }
 
     updateConnectionStatus(status) {
+        if (!this.connectionStatus) return;
         this.connectionStatus.className = `connection-status ${status}`;
         this.connectionStatus.textContent = status.charAt(0).toUpperCase() + status.slice(1);
     }
