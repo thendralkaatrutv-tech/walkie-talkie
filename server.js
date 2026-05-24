@@ -2,20 +2,33 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const TOKEN_SECRET = process.env.TOKEN_SECRET || 'walkie-secret-key-change-in-production';
 
-const sessions = new Set();
+function createToken() {
+    const timestamp = Date.now().toString();
+    const hash = crypto.createHmac('sha256', TOKEN_SECRET).update(timestamp).digest('hex');
+    return timestamp + '.' + hash;
+}
+
+function verifyToken(token) {
+    if (!token) return false;
+    const parts = token.split('.');
+    if (parts.length !== 2) return false;
+    const [timestamp, hash] = parts;
+    const expectedHash = crypto.createHmac('sha256', TOKEN_SECRET).update(timestamp).digest('hex');
+    return hash === expectedHash;
+}
+
 const users = new Map();
 const channels = new Map();
 channels.set('general', { name: 'General', users: new Set() });
@@ -23,7 +36,6 @@ channels.set('general', { name: 'General', users: new Set() });
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// PUBLIC ROUTES
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -31,29 +43,23 @@ app.get('/login', (req, res) => {
 app.post('/auth', (req, res) => {
     const { password } = req.body;
     if (password === URL_PASSWORD) {
-        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        sessions.add(token);
+        const token = createToken();
         res.json({ success: true, token: token });
     } else {
         res.status(401).json({ success: false, message: 'Invalid password' });
     }
 });
 
-// PROTECT ONLY THE MAIN PAGE
-app.get('/', (req, res, next) => {
+app.get('/', (req, res) => {
     const token = req.query.token;
-    if (token && sessions.has(token)) {
-        // Valid token - serve the app
+    if (token && verifyToken(token)) {
         return res.sendFile(path.join(__dirname, 'public', 'index.html'));
     }
-    // No token - redirect to login
     res.redirect('/login');
 });
 
-// ALL OTHER STATIC FILES - NO AUTH NEEDED
 app.use(express.static(path.join(__dirname, 'public')));
 
-// SOCKET.IO
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
@@ -106,10 +112,8 @@ io.on('connection', (socket) => {
     socket.on('chat-message', (data) => {
         const user = users.get(socket.id);
         if (!user) return;
-        
         const { text, channel } = data;
         if (!text || !text.trim()) return;
-        
         io.to(channel).emit('chat-message', {
             senderId: socket.id,
             nickname: user.nickname,
@@ -220,6 +224,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Walkie-Talkie Server running on port ${PORT}`);
-    console.log(`URL password: ${URL_PASSWORD}`);
-    console.log(`Admin password: ${ADMIN_PASSWORD}`);
 });
