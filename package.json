@@ -1,5 +1,5 @@
 {
-  "name": "walkie-talkie",
+  "name": "நீயும் நானும்...",
   "version": "1.0.0",
   "description": "Push-to-Talk Walkie Talkie using WebRTC and Socket.io",
   "main": "server.js",
