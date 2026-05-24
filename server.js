@@ -207,7 +207,8 @@ io.on('connection', (socket) => {
         io.to(targetId).emit('muted', { muted: false });
         io.to(admin.channel).emit('user-muted', { id: targetId, muted: false });
     });
-       socket.on('disconnect', () => {
+    
+    socket.on('disconnect', () => {
         const user = users.get(socket.id);
         if (user) {
             if (channels.has(user.channel)) {
@@ -221,3 +222,11 @@ io.on('connection', (socket) => {
             console.log('User disconnected:', socket.id);
         }
     });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`Walkie-Talkie Server running on port ${PORT}`);
+    console.log(`URL password: ${URL_PASSWORD}`);
+    console.log(`Admin password: ${ADMIN_PASSWORD}`);
+});
