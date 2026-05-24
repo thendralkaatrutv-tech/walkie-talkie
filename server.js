@@ -12,7 +12,7 @@ const io = new Server(server, {
 
 const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
-const TOKEN_SECRET = process.env.TOKEN_SECRET || 'walkie-secret-key-change-in-production';
+const TOKEN_SECRET = process.env.TOKEN_SECRET || 'walkie-secret-key';
 
 function createToken() {
     const timestamp = Date.now().toString();
