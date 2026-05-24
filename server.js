@@ -9,7 +9,7 @@ const io = new Server(server, {
     cors: {
         origin: "*",
         methods: ["GET", "POST"]
-   const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
+    }
 });
 
 // ===== URL PASSWORD PROTECTION =====
@@ -21,33 +21,11 @@ const users = new Map();
 const channels = new Map();
 channels.set('general', { name: 'General', users: new Set() });
 
-// Middleware to check URL password
-app.use((req, res, next) => {
-    // Skip check for login page and auth endpoints
-    if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login.html')) {
-        return next();
-    }
-    
-    // Check if user has valid session
-    if (req.session && req.session.authenticated) {
-        return next();
-    }
-    
-    // Check custom header or query token (for socket.io static files)
-    const authToken = req.headers['x-auth-token'] || req.query.token;
-    if (authToken === URL_PASSWORD) {
-        return next();
-    }
-    
-    // Redirect to login
-    res.redirect('/login');
-});
-
-// Parse JSON and serve static with session-like behavior using cookies
+// Parse JSON and form data FIRST
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Simple cookie-based auth (no session store needed)
+// Auth endpoints - NO password check (must be before protection middleware)
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -62,20 +40,36 @@ app.post('/auth', (req, res) => {
     }
 });
 
-// Middleware to check cookie auth for static files
+// Simple cookie parser (no external package needed)
 app.use((req, res, next) => {
+    const cookieHeader = req.headers.cookie;
+    req.cookies = {};
+    if (cookieHeader) {
+        cookieHeader.split(';').forEach(cookie => {
+            const [name, value] = cookie.trim().split('=');
+            req.cookies[name] = value;
+        });
+    }
+    next();
+});
+
+// Password protection middleware for everything else
+app.use((req, res, next) => {
+    // Skip check for login page and auth endpoints
     if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login.html')) {
         return next();
     }
     
-    const cookie = req.headers.cookie;
-    if (cookie && cookie.includes(`auth=${URL_PASSWORD}`)) {
+    // Check if user has valid cookie
+    if (req.cookies && req.cookies.auth === URL_PASSWORD) {
         return next();
     }
     
+    // Redirect to login
     res.redirect('/login');
 });
 
+// Static files AFTER auth check
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
