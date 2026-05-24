@@ -315,6 +315,12 @@ class WalkieTalkie {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
+    clearChat() {
+        if (this.chatMessages) {
+            this.chatMessages.innerHTML = '';
+        }
+    }
+
     async createPeerConnection(peerId, isInitiator) {
         try {
             const pc = new RTCPeerConnection(this.iceServers);
