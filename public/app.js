@@ -50,7 +50,6 @@ class WalkieTalkie {
         const isLoginPage = this.joinBtn !== null;
 
         if (isLoginPage) {
-            // Login page mode - wait for user to click join
             this.joinBtn.addEventListener('click', () => this.joinChannel());
             this.nicknameInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') this.joinChannel();
@@ -59,7 +58,6 @@ class WalkieTalkie {
                 this.adminPasswordGroup.classList.toggle('show', this.adminCheck.checked);
             });
         } else {
-            // Main app page - auto join with random nickname
             this.nickname = 'User-' + Math.floor(Math.random() * 10000);
             this.channel = 'general';
             this.autoJoin();
