@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Walkie-Talkie</title>
+    <title>Walkie-Talkie - Login</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -15,30 +15,32 @@
             align-items: center;
             color: #fff;
         }
-        .container {
-            width: 100%;
-            max-width: 450px;
-            padding: 20px;
-        }
-        .login-screen {
+        .login-box {
             background: rgba(255,255,255,0.05);
             border-radius: 20px;
-            padding: 40px;
+            padding: 50px 40px;
             text-align: center;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255,255,255,0.1);
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
         }
-        .login-screen h1 {
-            font-size: 2.5em;
+        .login-box h1 {
+            font-size: 2.2em;
             margin-bottom: 10px;
             color: #00d4ff;
         }
-        .login-screen .subtitle {
+        .login-box .subtitle {
             color: #888;
-            margin-bottom: 30px;
+            margin-bottom: 35px;
+        }
+        .lock-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
         }
         .input-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         .input-group input {
             width: 100%;
@@ -50,6 +52,7 @@
             font-size: 16px;
             outline: none;
             transition: border-color 0.3s;
+            text-align: center;
         }
         .input-group input:focus {
             border-color: #00d4ff;
@@ -57,38 +60,13 @@
         .input-group input::placeholder {
             color: #666;
         }
-        .admin-toggle {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-            cursor: pointer;
-        }
-        .admin-toggle input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #00d4ff;
-            cursor: pointer;
-        }
-        .admin-toggle label {
-            color: #00d4ff;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .admin-password {
-            display: none;
-        }
-        .admin-password.show {
-            display: block;
-        }
-        .error-message {
+        .error-msg {
             color: #ff4444;
             font-size: 0.9em;
             margin-bottom: 15px;
             display: none;
         }
-        .error-message.show {
+        .error-msg.show {
             display: block;
         }
         .btn {
@@ -109,478 +87,62 @@
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(0,212,255,0.3);
         }
-        .app-screen {
-            display: none;
-            background: rgba(255,255,255,0.05);
-            border-radius: 20px;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .app-header {
-            background: rgba(0,0,0,0.3);
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .app-header h2 {
-            color: #00d4ff;
-            font-size: 1.3em;
-        }
-        .header-badges {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-        .channel-badge {
-            background: rgba(0,212,255,0.2);
-            color: #00d4ff;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85em;
-        }
-        .admin-badge {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
-            color: #fff;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .users-list {
-            padding: 15px 20px;
-            max-height: 150px;
-            overflow-y: auto;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .users-list h3 {
-            color: #888;
-            font-size: 0.9em;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .user-item {
-            display: flex;
-            align-items: center;
-            padding: 10px 12px;
-            margin-bottom: 6px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-            transition: all 0.3s;
-            position: relative;
-        }
-        .user-item.talking {
-            background: rgba(0,212,255,0.15);
-            border: 1px solid rgba(0,212,255,0.3);
-        }
-        .user-item.muted {
-            opacity: 0.5;
-        }
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            margin-right: 10px;
-            position: relative;
-            font-size: 0.9em;
-        }
-        .user-item.talking .user-avatar {
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            animation: pulse 1s infinite;
-        }
-        .user-item.admin .user-avatar {
-            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
-        }
-        .admin-icon {
-            position: absolute;
-            bottom: -2px;
-            right: -2px;
-            background: #ff6b6b;
-            color: #fff;
-            font-size: 0.55em;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid #1a1a2e;
-        }
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-        }
-        .user-info { flex: 1; }
-        .user-name { font-weight: 600; font-size: 0.9em; }
-        .user-name .admin-label {
-            color: #ff6b6b;
-            font-size: 0.75em;
-            margin-left: 5px;
-        }
-        .user-status { font-size: 0.75em; color: #888; }
-        .talking-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #00d4ff;
-            display: none;
-        }
-        .user-item.talking .talking-indicator {
-            display: block;
-            animation: blink 0.5s infinite alternate;
-        }
-        @keyframes blink {
-            from { opacity: 1; }
-            to { opacity: 0.3; }
-        }
-        .admin-actions {
-            display: flex;
-            gap: 4px;
-            margin-left: 6px;
-        }
-        .admin-btn {
-            padding: 3px 6px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.65em;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .admin-btn.kick {
-            background: rgba(255,68,68,0.3);
-            color: #ff4444;
-        }
-        .admin-btn.kick:hover {
-            background: rgba(255,68,68,0.5);
-        }
-        .admin-btn.mute {
-            background: rgba(255,165,0,0.3);
-            color: #ffaa00;
-        }
-        .admin-btn.mute:hover {
-            background: rgba(255,165,0,0.5);
-        }
-        .admin-btn.unmute {
-            background: rgba(0,255,136,0.3);
-            color: #00ff88;
-        }
-        .admin-btn.unmute:hover {
-            background: rgba(0,255,136,0.5);
-        }
-        /* CHAT STYLES */
-        .chat-area {
-            padding: 15px 20px;
-            background: rgba(0,0,0,0.15);
-        }
-        .chat-messages {
-            max-height: 180px;
-            overflow-y: auto;
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .chat-message {
-            padding: 8px 12px;
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            font-size: 0.85em;
-            word-break: break-word;
-        }
-        .chat-message.own {
-            background: rgba(0,212,255,0.15);
-            align-self: flex-end;
-        }
-        .chat-message .msg-sender {
-            color: #00d4ff;
-            font-weight: 600;
+        .hint {
+            margin-top: 20px;
+            color: #555;
             font-size: 0.8em;
-            margin-bottom: 2px;
-        }
-        .chat-message.own .msg-sender {
-            color: #00ff88;
-        }
-        .chat-message .msg-text {
-            color: #ddd;
-        }
-        .chat-input-group {
-            display: flex;
-            gap: 8px;
-        }
-        .chat-input {
-            flex: 1;
-            padding: 10px 15px;
-            border: 2px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.05);
-            color: #fff;
-            font-size: 14px;
-            outline: none;
-        }
-        .chat-input:focus {
-            border-color: #00d4ff;
-        }
-        .chat-input::placeholder {
-            color: #666;
-        }
-        .chat-send-btn {
-            padding: 10px 18px;
-            border: none;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #00d4ff, #0099cc);
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .chat-send-btn:hover {
-            transform: scale(1.05);
-        }
-        /* END CHAT STYLES */
-        .ptt-area {
-            padding: 20px;
-            text-align: center;
-            background: rgba(0,0,0,0.2);
-        }
-        .ptt-button {
-            width: 140px;
-            height: 140px;
-            border-radius: 50%;
-            border: 4px solid rgba(255,255,255,0.1);
-            background: linear-gradient(145deg, #2a2a4a, #1a1a3e);
-            color: #fff;
-            font-size: 1em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none;
-            position: relative;
-            overflow: hidden;
-        }
-        .ptt-button::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 0;
-            height: 0;
-            border-radius: 50%;
-            background: rgba(0,212,255,0.3);
-            transform: translate(-50%, -50%);
-            transition: width 0.3s, height 0.3s;
-        }
-        .ptt-button:active, .ptt-button.active {
-            background: linear-gradient(145deg, #00d4ff, #0099cc);
-            transform: scale(0.95);
-            border-color: #00d4ff;
-            box-shadow: 0 0 50px rgba(0,212,255,0.5);
-        }
-        .ptt-button:active::before, .ptt-button.active::before {
-            width: 160px;
-            height: 160px;
-        }
-        .ptt-button:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-        .ptt-icon { font-size: 1.8em; margin-bottom: 3px; }
-        .ptt-status {
-            margin-top: 15px;
-            font-size: 1em;
-            color: #888;
-            min-height: 25px;
-        }
-        .ptt-status.transmitting {
-            color: #00d4ff;
-            font-weight: bold;
-        }
-        .ptt-status.muted {
-            color: #ff4444;
-        }
-        .volume-control {
-            margin-top: 15px;
-            padding: 0 20px;
-        }
-        .volume-control label {
-            display: block;
-            margin-bottom: 8px;
-            color: #888;
-            font-size: 0.9em;
-        }
-        .volume-control input[type="range"] {
-            width: 100%;
-            -webkit-appearance: none;
-            height: 6px;
-            border-radius: 3px;
-            background: rgba(255,255,255,0.1);
-            outline: none;
-        }
-        .volume-control input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: #00d4ff;
-            cursor: pointer;
-        }
-        .visualizer {
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            height: 30px;
-            gap: 3px;
-            margin-top: 10px;
-            opacity: 0;
-            transition: opacity 0.3s;
-        }
-        .visualizer.active { opacity: 1; }
-        .bar {
-            width: 4px;
-            background: #00d4ff;
-            border-radius: 2px;
-            transition: height 0.1s;
-        }
-        .connection-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-            z-index: 1000;
-        }
-        .connection-status.connected {
-            background: rgba(0,255,0,0.2);
-            color: #00ff88;
-        }
-        .connection-status.disconnected {
-            background: rgba(255,0,0,0.2);
-            color: #ff4444;
-        }
-        .connection-status.connecting {
-            background: rgba(255,165,0,0.2);
-            color: #ffaa00;
-        }
-        .kicked-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-        }
-        .kicked-overlay.show {
-            display: flex;
-        }
-        .kicked-overlay h2 {
-            color: #ff4444;
-            font-size: 2em;
-            margin-bottom: 20px;
-        }
-        .kicked-overlay p {
-            color: #888;
-            margin-bottom: 30px;
-        }
-        .kicked-overlay .btn {
-            max-width: 200px;
-        }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); }
-        ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 3px; }
-        @media (max-width: 480px) {
-            .container { padding: 10px; }
-            .ptt-button { width: 120px; height: 120px; }
         }
     </style>
 </head>
 <body>
-    <div class="connection-status disconnected" id="connectionStatus">Disconnected</div>
-    
-    <div class="kicked-overlay" id="kickedOverlay">
-        <h2>Kicked by Admin</h2>
-        <p>You have been removed from the channel by an administrator.</p>
-        <button class="btn btn-primary" onclick="location.reload()">Rejoin</button>
-    </div>
-    
-    <div class="container">
-        <div class="login-screen" id="loginScreen">
-            <h1>Walkie-Talkie</h1>
-            <p class="subtitle">Push-to-Talk with Chat</p>
-            <div class="input-group">
-                <input type="text" id="nicknameInput" placeholder="Enter your nickname" maxlength="20">
-            </div>
-            <div class="input-group">
-                <input type="text" id="channelInput" placeholder="Channel name (default: general)" maxlength="20">
-            </div>
-            <div class="admin-toggle">
-                <input type="checkbox" id="adminCheck">
-                <label for="adminCheck">Join as Admin</label>
-            </div>
-            <div class="input-group admin-password" id="adminPasswordGroup">
-                <input type="password" id="adminPassword" placeholder="Admin password">
-            </div>
-            <div class="error-message" id="errorMessage"></div>
-            <button class="btn btn-primary" id="joinBtn">Join Channel</button>
+    <div class="login-box">
+        <div class="lock-icon">🔒</div>
+        <h1>Walkie-Talkie</h1>
+        <p class="subtitle">Enter password to access</p>
+        <div class="input-group">
+            <input type="password" id="passwordInput" placeholder="Enter password" autofocus>
         </div>
-        <div class="app-screen" id="appScreen">
-            <div class="app-header">
-                <h2>Walkie-Talkie</h2>
-                <div class="header-badges">
-                    <span class="admin-badge" id="adminBadge" style="display:none">ADMIN</span>
-                    <span class="channel-badge" id="channelBadge">general</span>
-                </div>
-            </div>
-            <div class="users-list" id="usersList">
-                <h3>Channel Users</h3>
-                <div id="usersContainer"></div>
-            </div>
-            
-            <!-- CHAT AREA -->
-            <div class="chat-area">
-                <div class="chat-messages" id="chatMessages"></div>
-                <div class="chat-input-group">
-                    <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." maxlength="200">
-                    <button class="chat-send-btn" id="chatSendBtn">Send</button>
-                </div>
-            </div>
-            
-            <div class="ptt-area">
-                <button class="ptt-button" id="pttButton">
-                    <div class="ptt-icon">🎙️</div>
-                    <div>PUSH TO TALK</div>
-                </button>
-                <div class="visualizer" id="visualizer">
-                    <div class="bar" style="height: 5px"></div>
-                    <div class="bar" style="height: 10px"></div>
-                    <div class="bar" style="height: 15px"></div>
-                    <div class="bar" style="height: 20px"></div>
-                    <div class="bar" style="height: 15px"></div>
-                    <div class="bar" style="height: 10px"></div>
-                    <div class="bar" style="height: 5px"></div>
-                </div>
-                <div class="ptt-status" id="pttStatus">Hold button to talk</div>
-                <div class="volume-control">
-                    <label>Speaker Volume</label>
-                    <input type="range" id="volumeSlider" min="0" max="100" value="80">
-                </div>
-            </div>
-        </div>
+        <div class="error-msg" id="errorMsg">Invalid password</div>
+        <button class="btn btn-primary" id="loginBtn">Enter</button>
+        <p class="hint">Protected channel access</p>
     </div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
+
+    <script>
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMsg = document.getElementById('errorMsg');
+
+        async function doLogin() {
+            const password = passwordInput.value.trim();
+            if (!password) return;
+
+            try {
+                const res = await fetch('/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorMsg.classList.add('show');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                errorMsg.textContent = 'Server error. Try again.';
+                errorMsg.classList.add('show');
+            }
+        }
+
+        loginBtn.addEventListener('click', doLogin);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doLogin();
+        });
+    </script>
 </body>
 </html>
