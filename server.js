@@ -207,9 +207,17 @@ io.on('connection', (socket) => {
         io.to(targetId).emit('muted', { muted: false });
         io.to(admin.channel).emit('user-muted', { id: targetId, muted: false });
     });
-    
-    socket.on('disconnect', () => {
+       socket.on('disconnect', () => {
         const user = users.get(socket.id);
         if (user) {
             if (channels.has(user.channel)) {
-                channels.get(user.channel).users.delete(socket
+                channels.get(user.channel).users.delete(socket.id);
+            }
+            socket.to(user.channel).emit('user-left', {
+                id: socket.id,
+                nickname: user.nickname
+            });
+            users.delete(socket.id);
+            console.log('User disconnected:', socket.id);
+        }
+    });
