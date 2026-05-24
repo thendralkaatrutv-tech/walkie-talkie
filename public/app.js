@@ -30,6 +30,11 @@ class WalkieTalkie {
         this.visualizer = document.getElementById('visualizer');
         this.volumeSlider = document.getElementById('volumeSlider');
         this.kickedOverlay = document.getElementById('kickedOverlay');
+        
+        // Chat elements
+        this.chatInput = document.getElementById('chatInput');
+        this.chatSendBtn = document.getElementById('chatSendBtn');
+        this.chatMessages = document.getElementById('chatMessages');
 
         this.iceServers = {
             iceServers: [
@@ -70,6 +75,12 @@ class WalkieTalkie {
             document.querySelectorAll('audio').forEach(audio => {
                 audio.volume = volume;
             });
+        });
+
+        // Chat event listeners
+        this.chatSendBtn.addEventListener('click', () => this.sendChatMessage());
+        this.chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.sendChatMessage();
         });
 
         document.addEventListener('keydown', (e) => {
@@ -214,6 +225,11 @@ class WalkieTalkie {
             }
         });
 
+        // Chat events
+        this.socket.on('chat-message', (data) => {
+            this.displayChatMessage(data);
+        });
+
         this.socket.on('offer', async (data) => {
             await this.handleOffer(data);
         });
@@ -229,6 +245,33 @@ class WalkieTalkie {
         this.loginScreen.style.display = 'none';
         this.appScreen.style.display = 'block';
         this.channelBadge.textContent = this.channel;
+    }
+
+    // CHAT METHODS
+    sendChatMessage() {
+        const text = this.chatInput.value.trim();
+        if (!text || !this.socket) return;
+        
+        this.socket.emit('chat-message', {
+            text: text,
+            channel: this.channel
+        });
+        
+        this.chatInput.value = '';
+    }
+
+    displayChatMessage(data) {
+        const msgEl = document.createElement('div');
+        msgEl.className = 'chat-message' + (data.senderId === this.socket.id ? ' own' : '');
+        
+        const senderName = data.senderId === this.socket.id ? 'You' : this.escapeHtml(data.nickname);
+        msgEl.innerHTML = `
+            <div class="msg-sender">${senderName}${data.isAdmin ? ' 👑' : ''}</div>
+            <div class="msg-text">${this.escapeHtml(data.text)}</div>
+        `;
+        
+        this.chatMessages.appendChild(msgEl);
+        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
     async createPeerConnection(peerId, isInitiator) {
