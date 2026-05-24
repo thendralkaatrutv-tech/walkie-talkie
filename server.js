@@ -12,12 +12,71 @@ const io = new Server(server, {
     }
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// ===== URL PASSWORD PROTECTION =====
+const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
+// ===================================
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const users = new Map();
 const channels = new Map();
 channels.set('general', { name: 'General', users: new Set() });
+
+// Middleware to check URL password
+app.use((req, res, next) => {
+    // Skip check for login page and auth endpoints
+    if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login.html')) {
+        return next();
+    }
+    
+    // Check if user has valid session
+    if (req.session && req.session.authenticated) {
+        return next();
+    }
+    
+    // Check custom header or query token (for socket.io static files)
+    const authToken = req.headers['x-auth-token'] || req.query.token;
+    if (authToken === URL_PASSWORD) {
+        return next();
+    }
+    
+    // Redirect to login
+    res.redirect('/login');
+});
+
+// Parse JSON and serve static with session-like behavior using cookies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Simple cookie-based auth (no session store needed)
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.post('/auth', (req, res) => {
+    const { password } = req.body;
+    if (password === URL_PASSWORD) {
+        res.cookie('auth', URL_PASSWORD, { maxAge: 24 * 60 * 60 * 1000, httpOnly: true });
+        res.json({ success: true });
+    } else {
+        res.status(401).json({ success: false, message: 'Invalid password' });
+    }
+});
+
+// Middleware to check cookie auth for static files
+app.use((req, res, next) => {
+    if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login.html')) {
+        return next();
+    }
+    
+    const cookie = req.headers.cookie;
+    if (cookie && cookie.includes(`auth=${URL_PASSWORD}`)) {
+        return next();
+    }
+    
+    res.redirect('/login');
+});
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
@@ -68,7 +127,6 @@ io.on('connection', (socket) => {
         console.log(`${nickname} joined channel: ${channel} ${userIsAdmin ? '(ADMIN)' : ''}`);
     });
     
-    // CHAT HANDLER
     socket.on('chat-message', (data) => {
         const user = users.get(socket.id);
         if (!user) return;
@@ -186,5 +244,6 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`Walkie-Talkie Server running on port ${PORT}`);
+    console.log(`URL password: ${URL_PASSWORD}`);
     console.log(`Admin password: ${ADMIN_PASSWORD}`);
 });
