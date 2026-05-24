@@ -6,7 +6,10 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -63,6 +66,23 @@ io.on('connection', (socket) => {
         });
         
         console.log(`${nickname} joined channel: ${channel} ${userIsAdmin ? '(ADMIN)' : ''}`);
+    });
+    
+    // CHAT HANDLER
+    socket.on('chat-message', (data) => {
+        const user = users.get(socket.id);
+        if (!user) return;
+        
+        const { text, channel } = data;
+        if (!text || !text.trim()) return;
+        
+        io.to(channel).emit('chat-message', {
+            senderId: socket.id,
+            nickname: user.nickname,
+            isAdmin: user.isAdmin,
+            text: text.trim(),
+            timestamp: Date.now()
+        });
     });
     
     socket.on('offer', (data) => {
