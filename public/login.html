@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Walkie-Talkie - Login</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+        .login-box {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 50px 40px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 100%;
+            max-width: 400px;
+            margin: 20px;
+        }
+        .login-box h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+        .login-box .subtitle {
+            color: #888;
+            margin-bottom: 35px;
+        }
+        .lock-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        .input-group {
+            margin-bottom: 25px;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.05);
+            color: #fff;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+            text-align: center;
+        }
+        .input-group input:focus {
+            border-color: #00d4ff;
+        }
+        .input-group input::placeholder {
+            color: #666;
+        }
+        .error-msg {
+            color: #ff4444;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .error-msg.show {
+            display: block;
+        }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0,212,255,0.3);
+        }
+        .hint {
+            margin-top: 20px;
+            color: #555;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="lock-icon">🔒</div>
+        <h1>Walkie-Talkie</h1>
+        <p class="subtitle">Enter password to access</p>
+        <div class="input-group">
+            <input type="password" id="passwordInput" placeholder="Enter password" autofocus>
+        </div>
+        <div class="error-msg" id="errorMsg">Invalid password</div>
+        <button class="btn btn-primary" id="loginBtn">Enter</button>
+        <p class="hint">Protected channel access</p>
+    </div>
+
+    <script>
+        const passwordInput = document.getElementById('passwordInput');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMsg = document.getElementById('errorMsg');
+
+        async function doLogin() {
+            const password = passwordInput.value.trim();
+            if (!password) return;
+
+            try {
+                const res = await fetch('/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    window.location.href = '/';
+                } else {
+                    errorMsg.classList.add('show');
+                    passwordInput.value = '';
+                    passwordInput.focus();
+                }
+            } catch (err) {
+                console.error('Login error:', err);
+                errorMsg.textContent = 'Server error. Try again.';
+                errorMsg.classList.add('show');
+            }
+        }
+
+        loginBtn.addEventListener('click', doLogin);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') doLogin();
+        });
+    </script>
+</body>
+</html>
