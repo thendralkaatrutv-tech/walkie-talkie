@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>நீயும் நானும்...</title>
+    <title>Talkie Pro</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,6 +22,12 @@
             background: rgba(255,255,255,0.05);
             border-radius: 15px;
             margin-bottom: 20px;
+        }
+        .logo {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #00d4ff;
+            margin-right: 15px;
         }
         .channel-badge {
             background: #00d4ff;
@@ -206,6 +212,29 @@
             display: flex;
             flex-direction: column;
         }
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .chat-label {
+            color: #888;
+            font-size: 0.9em;
+        }
+        .clear-btn {
+            padding: 4px 12px;
+            border: none;
+            border-radius: 6px;
+            background: #ff4444;
+            color: #fff;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .clear-btn:hover {
+            background: #cc0000;
+        }
         .chat-messages {
             flex: 1;
             overflow-y: auto;
@@ -293,7 +322,8 @@
     <div id="loginScreen" style="display:none"></div>
     <div id="appScreen">
         <div class="header">
-            <div>
+            <div style="display:flex; align-items:center;">
+                <span class="logo">Talkie Pro</span>
                 <span class="channel-badge" id="channelBadge">general</span>
                 <span class="admin-badge" id="adminBadge">ADMIN</span>
             </div>
@@ -321,6 +351,10 @@
                 </div>
                 
                 <div class="chat-section">
+                    <div class="chat-header">
+                        <span class="chat-label">💬 Chat</span>
+                        <button class="clear-btn" onclick="walkieTalkie.clearChat()">Clear</button>
+                    </div>
                     <div class="chat-messages" id="chatMessages"></div>
                     <div class="chat-input-group">
                         <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
