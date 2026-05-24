@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 const server = http.createServer(app);
@@ -12,20 +13,21 @@ const io = new Server(server, {
     }
 });
 
-// ===== URL PASSWORD PROTECTION =====
+// ===== PASSWORDS =====
 const URL_PASSWORD = process.env.URL_PASSWORD || 'walkie123';
-// ===================================
-
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+// =====================
+
 const users = new Map();
 const channels = new Map();
 channels.set('general', { name: 'General', users: new Set() });
 
-// Parse JSON and form data FIRST
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Auth endpoints - NO password check (must be before protection middleware)
+// PUBLIC ROUTES (no password needed)
 app.get('/login', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -33,35 +35,26 @@ app.get('/login', (req, res) => {
 app.post('/auth', (req, res) => {
     const { password } = req.body;
     if (password === URL_PASSWORD) {
-        res.cookie('auth', URL_PASSWORD, { maxAge: 24 * 60 * 60 * 1000, httpOnly: true });
+        res.cookie('walkie_auth', 'true', { 
+            maxAge: 24 * 60 * 60 * 1000, 
+            httpOnly: true,
+            sameSite: 'lax'
+        });
         res.json({ success: true });
     } else {
         res.status(401).json({ success: false, message: 'Invalid password' });
     }
 });
 
-// Simple cookie parser (no external package needed)
+// PROTECTION MIDDLEWARE
 app.use((req, res, next) => {
-    const cookieHeader = req.headers.cookie;
-    req.cookies = {};
-    if (cookieHeader) {
-        cookieHeader.split(';').forEach(cookie => {
-            const [name, value] = cookie.trim().split('=');
-            req.cookies[name] = value;
-        });
-    }
-    next();
-});
-
-// Password protection middleware for everything else
-app.use((req, res, next) => {
-    // Skip check for login page and auth endpoints
-    if (req.path === '/login' || req.path === '/auth' || req.path.startsWith('/login.html')) {
+    // Allow login routes
+    if (req.path === '/login' || req.path === '/auth') {
         return next();
     }
     
-    // Check if user has valid cookie
-    if (req.cookies && req.cookies.auth === URL_PASSWORD) {
+    // Check auth cookie
+    if (req.cookies && req.cookies.walkie_auth === 'true') {
         return next();
     }
     
@@ -69,9 +62,10 @@ app.use((req, res, next) => {
     res.redirect('/login');
 });
 
-// Static files AFTER auth check
+// STATIC FILES (protected)
 app.use(express.static(path.join(__dirname, 'public')));
 
+// SOCKET.IO
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
     
