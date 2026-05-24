@@ -125,8 +125,11 @@
                 
                 const data = await res.json();
                 
-                if (data.success) {
-                    window.location.href = '/';
+                if (data.success && data.token) {
+                    // Store token in localStorage
+                    localStorage.setItem('walkie_token', data.token);
+                    // Redirect with token in URL
+                    window.location.href = '/?token=' + encodeURIComponent(data.token);
                 } else {
                     errorMsg.classList.add('show');
                     passwordInput.value = '';
