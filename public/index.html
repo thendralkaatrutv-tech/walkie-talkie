@@ -13,7 +13,7 @@
             min-height: 100vh;
             color: #fff;
         }
-        #appScreen { display: none; padding: 20px; }
+        #appScreen { padding: 20px; }
         .header {
             display: flex;
             justify-content: space-between;
@@ -290,6 +290,7 @@
     </style>
 </head>
 <body>
+    <div id="loginScreen" style="display:none"></div>
     <div id="appScreen">
         <div class="header">
             <div>
@@ -348,6 +349,6 @@
         <button onclick="location.reload()">Back to Login</button>
     </div>
 
-    <script src="/main.js"></script>
+    <script src="/app.js"></script>
 </body>
 </html>
